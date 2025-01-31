@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 import psycopg2  # pip install psycopg2
 from psycopg2 import sql
 from flask_bcrypt import Bcrypt # pip install flask-bcrypt
-import jwt # pip install jwt
+import jwt # pip install pyjwt
 import datetime
 
 app = Flask(__name__) 
@@ -106,30 +106,23 @@ def login_user():
     password = request.json['password']
     connection = get_db_connection()
     cursor = connection.cursor()
-
     # Check if the username exists
     cursor.execute("SELECT * FROM users WHERE username = %s;", (username,))
     user = cursor.fetchone()
-
     # If the user does not exist
     if user is None:
         return jsonify({"message": "Invalid username or password."}), 401
-
     stored_hashed_password = user[2]
-
     # Compare the stored hashed password with the provided password
     if not check_password(stored_hashed_password, password):
         return jsonify({"message": "Invalid username or password."}), 401
-
     payload = {
         'username': username,
         'user_id': user[0],
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)  # Token expiration time
     }
-    
     # Generate the token
     token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-
     cursor.close()
     connection.close()
     return jsonify({
