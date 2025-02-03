@@ -69,11 +69,22 @@ def encode_password(password):
 def check_password(hashed_password, password):
     return bcrypt.check_password_hash(hashed_password, password)
 
+def decode_token(jwt_token):
+    try:
+        decoded_token_payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=["HS256"])
+        return decoded_token_payload
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired!"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token!"}), 401
+
 @app.route('/create-task', methods=['POST'])
 def create_task():
     task_title = request.json['task_title']
     task_description = request.json['task_description']
-    user_id = request.json['user_id']
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
+    user_id = decoded_token_payload['user_id']
     connection = get_db_connection()
     cursor = connection.cursor()
     cursor.execute("""
@@ -132,10 +143,12 @@ def login_user():
 
 @app.route('/delete-by-user-id', methods=['DELETE'])
 def delete_user():
-    user_id = request.args.get('user_id')
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
+    user_id = decoded_token_payload['user_id']
     connection = get_db_connection()
     cursor = connection.cursor()
-    query = "DELETE FROM users WHERE user_id = " + user_id
+    query = "DELETE FROM users WHERE user_id = " + str(user_id)
     cursor.execute(query)
     connection.commit()
     cursor.close()
@@ -145,10 +158,12 @@ def delete_user():
 
 @app.route('/get-single-user', methods=['GET'])
 def get_single_user():
-    user_id = request.args.get('user_id')
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
+    user_id = decoded_token_payload['user_id']
     connection = get_db_connection()
     cursor = connection.cursor()
-    query = "SELECT * FROM users WHERE user_id = "+ user_id
+    query = "SELECT * FROM users WHERE user_id = "+ str(user_id)
     cursor.execute(query)
     user = cursor.fetchone()
     cursor.close()
@@ -165,6 +180,8 @@ def get_single_user():
 
 @app.route('/get-all-tasks', methods=['GET'])
 def get_all_tasks():
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
     connection = get_db_connection()
     cursor = connection.cursor()
     cursor.execute("""
@@ -181,10 +198,12 @@ def get_all_tasks():
 @app.route('/delete-by-task-id', methods=['DELETE'])
 def delete_task():
     task_id = request.args.get('task_id')
-    user_id = request.args.get('user_id')
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
+    user_id = decoded_token_payload['user_id']
     connection = get_db_connection()
     cursor = connection.cursor()
-    query = "DELETE FROM tasks WHERE task_id = " + task_id + " AND user_id = " + user_id
+    query = "DELETE FROM tasks WHERE task_id = " + str(task_id) + " AND user_id = " + str(user_id)
     cursor.execute(query)
     connection.commit()
     cursor.close()
@@ -196,10 +215,12 @@ def delete_task():
 
 @app.route('/get-user-tasks', methods=['GET'])
 def get_user_tasks():
-    user_id = request.args.get('user_id')
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
+    user_id = decoded_token_payload['user_id']
     connection = get_db_connection()
     cursor = connection.cursor()
-    query = "SELECT * FROM tasks WHERE user_id = "+ user_id
+    query = "SELECT * FROM tasks WHERE user_id = "+ str(user_id)
     cursor.execute(query)
     tasks = cursor.fetchall()
     cursor.close()
@@ -210,9 +231,11 @@ def get_user_tasks():
 @app.route('/get-single-task', methods=['GET'])
 def get_single_task():
     task_id = request.args.get('task_id')
+    jwt_token = request.headers['Authorization']
+    decoded_token_payload = decode_token(jwt_token)
     connection = get_db_connection()
     cursor = connection.cursor()
-    query = "SELECT * FROM tasks WHERE task_id = "+ task_id
+    query = "SELECT * FROM tasks WHERE task_id = "+ str(task_id)
     cursor.execute(query)
     task = cursor.fetchone()
     cursor.close()
